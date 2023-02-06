@@ -15,11 +15,11 @@ class WatchedItErrorMiddleWare: AsyncMiddleware {
             return response
         }catch {
             if let error = error as? WatchedItError {
-                return try await SendableResponse<EmptyData>.error(error).encodeResponse(for: request)
+                return try await SendableResponse<EmptyBody>.error(error).encodeResponse(for: request)
             }else if let error = error as? AbortError {
-                return try await SendableResponse<EmptyData>.error(error).encodeResponse(for: request)
+                return try await SendableResponse<EmptyBody>.error(error).encodeResponse(for: request)
             }
-            return try await SendableResponse<EmptyData>.error(error).encodeResponse(for: request)
+            return try await SendableResponse<EmptyBody>.error(error).encodeResponse(for: request)
         }
     }
 }

@@ -2,19 +2,22 @@ import Vapor
 import Fluent
 import JWT
 import SendinBlueMailer
+import WatchedItModels
 
 struct AuthenticationController: RouteCollection {
     func boot(routes: RoutesBuilder) throws {
-        let usersRoute = routes.grouped("authentication")
-        usersRoute.post("registration", use: register)
-        usersRoute.post("checkEmail", use: checkEmail)
-        usersRoute.post("refreshToken", use: refresh)
-        let passwordProtected = usersRoute.grouped(UserModel.authenticator())
-        passwordProtected.post("signin", use: signIn)
-        let authProtected = usersRoute.grouped(JWTBearerAuthenticator())
-        authProtected.post("signout", use: signOut)
+        let authentication = routes.grouped("authentication")
+        let passwordProtected = authentication.grouped(UserModel.authenticator())
+        let authProtected = authentication.grouped(JWTBearerAuthenticator())
+        authentication.post("checkEmail", use: checkEmail)
+        authentication.post("registration", use: register)
+        authentication.post("sendVerification", use: sendVerification)
+        authentication.post("verify", use: verify)
+        passwordProtected.post("signIn", use: signIn)
+        authentication.post("refreshToken", use: refresh)
+        authProtected.post("signOut", use: signOut)
     }
-//MARK: - Check Username
+//MARK: - Check Email
     func checkEmail(req: Request) async throws -> SendableResponse<EmptyBody> {
         try SearchableUser.validate(content: req)
         guard let username = try? req.content.decode(SearchableUser.self) else {
@@ -61,21 +64,21 @@ struct AuthenticationController: RouteCollection {
                  </html>
                  """)
         try await req.application.mailClient.send(email: verificationEmail, on: req.eventLoop).get()
-        return FResponse(status: .ok, visible: .success())
+        return SendableResponse(status: .ok, visible: .success())
     }
 //MARK: - Verify
     func verify(req: Request) async throws -> SendableResponse<String> {
-        try SearchableUser.validate(content: req)
+        try OTPVerification.validate(content: req)
         guard let verification = try? req.content.decode(OTPVerification.self) else {
-            throw CommonError.missing("Make sure you are sending the Email using the key 'email' & the OTP using the key 'otp'.")
+            throw CommonError.emptyBody("Make sure you are sending the Email using the key 'email' & the OTP using the key 'otp'.")
         }
         guard let user = await verification.user(db: req.db) else {
             throw AuthenticationError.invalidUser
         }
         try await TokenModel.validate(otp: verification.otp, userID: try user.requireID(), on: req.db)
-        user.verified = true
+        user.emailVerified = true
         try await user.update(on: req.db)
-        return FResponse(status: .ok, visible: .success())
+        return SendableResponse(status: .ok, visible: .success())
     }
 //MARK: - Sign In
     func signIn(req: Request) async throws -> SendableResponse<AuthSession> {
@@ -106,6 +109,9 @@ struct AuthenticationController: RouteCollection {
             throw AuthenticationError.expiredRefreshToken
         }
         let user = try await refreshToken.user(db: req.db)
+        guard user.loggedIn else {
+            throw AuthenticationError.expiredRefreshToken
+        }
         let session = try await user.generateSession(db: req.db, app: req.application, source: .refresh, oldToken: refreshToken)
         return SendableResponse(status: .ok, visible: .success(session))
     }

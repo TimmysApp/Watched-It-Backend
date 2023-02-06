@@ -1,5 +1,5 @@
 //
-//  File.swift
+//  ModelExtensions.swift
 //  
 //
 //  Created by Joe Maghzal on 05/02/2023.
@@ -9,6 +9,13 @@ import Vapor
 import Fluent
 import JWT
 import WatchedItModels
+
+//MARK: - Content
+extension OTPVerification: Content {}
+extension RefreshTokenCredentials: Content {}
+extension SearchableUser: Content {}
+extension UserCredentials: Content {}
+extension AuthSession: Content {}
 
 //MARK: - Validatable
 extension RefreshTokenCredentials: Validatable {
@@ -30,12 +37,7 @@ extension SearchableUser: Validatable {
     }
 }
 
-extension OTPVerification: Content, Validatable {
-    func user(db: Database) async -> UserModel? {
-        return try? await UserModel.query(on: db)
-            .filter(\.$email == email)
-            .first()
-    }
+extension OTPVerification: Validatable {
     public static func validations(_ validations: inout Validations) {
         validations.add("email", as: String.self, is: .email)
         validations.add("otp", as: String.self, is: .count(6...6))
@@ -54,7 +56,7 @@ extension UserCredentials {
     }
 }
 
-extension SearchableUser: Content {
+extension SearchableUser {
     func user(db: Database) async -> UserModel? {
         if let username {
             return try? await UserModel.query(on: db)
@@ -66,5 +68,13 @@ extension SearchableUser: Content {
                 .first()
         }
         return nil
+    }
+}
+
+extension OTPVerification {
+    func user(db: Database) async -> UserModel? {
+        return try? await UserModel.query(on: db)
+            .filter(\.$email == email)
+            .first()
     }
 }

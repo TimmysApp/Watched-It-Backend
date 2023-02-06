@@ -8,7 +8,7 @@
 import Vapor
 
 enum AuthenticationError {
-    case usernameTaken, invalidUser
+    case usernameTaken, invalidUser, expiredOTP, invalidOTP
     //MARK: - Bearer Token
     case tokenCreation, invalidToken
     //MARK: - RefreshToken
@@ -23,6 +23,10 @@ extension AuthenticationError: WatchedItError {
                 return "Please choose another username as the requested username is already in use!"
             case .invalidUser:
                 return "Could not find user. Please check your credentials or head to the registration page to get started!"
+            case .expiredOTP:
+                return "The provided OTP has been expired!"
+            case .invalidOTP:
+                return "The provided OTP is invalid!"
             //MARK: - Bearer Token
             case .tokenCreation:
                 return "Could not create an Access Token. Please try again!"
@@ -43,6 +47,10 @@ extension AuthenticationError: WatchedItError {
                 return .conflict
             case .invalidUser:
                 return .notFound
+            case .expiredOTP:
+                return .forbidden
+            case .invalidOTP:
+                return .forbidden
             //MARK: - Bearer Token
             case .tokenCreation:
                 return .expectationFailed
@@ -63,6 +71,10 @@ extension AuthenticationError: WatchedItError {
                 return "Username already Exists"
             case .invalidUser:
                 return "Invalid User"
+            case .expiredOTP:
+                return "OTP Expired"
+            case .invalidOTP:
+                return "Invalid OTP"
                 //MARK: - Bearer Token
             case .tokenCreation:
                 return "Access Token Error"
